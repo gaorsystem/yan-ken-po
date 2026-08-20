@@ -36,6 +36,7 @@ class SupabaseGameEngine {
   // Stored choices on Host to avoid exposing secret choice prematurely
   private hostP1Choice: Choice | null = null;
   private hostP2Choice: Choice | null = null;
+  private mySelectedChoice: Choice | null = null;
 
   createRoom(
     playerName: string,
@@ -55,6 +56,7 @@ class SupabaseGameEngine {
     this.reactionCallback = onReaction || null;
     this.hostP1Choice = null;
     this.hostP2Choice = null;
+    this.mySelectedChoice = null;
 
     const initialState: RoomState = {
       code,
@@ -67,6 +69,7 @@ class SupabaseGameEngine {
         avatar: avatar || '🔥',
         score: 0,
         choice: null,
+        hasChosen: false,
         readyForNext: false,
         connected: true,
       },
@@ -97,6 +100,7 @@ class SupabaseGameEngine {
     this.isHost = false;
     this.updateCallback = onUpdate || null;
     this.reactionCallback = onReaction || null;
+    this.mySelectedChoice = null;
 
     this.connectChannel(code.toUpperCase(), playerId, playerName, avatar);
     return { playerId };
@@ -114,8 +118,22 @@ class SupabaseGameEngine {
     // 1. Sync room state updates broadcasted
     channel.on('broadcast', { event: 'room_state' }, ({ payload }) => {
       if (payload) {
-        this.currentRoom = payload;
-        if (this.updateCallback) this.updateCallback(payload);
+        const receivedRoom: RoomState = { ...payload };
+
+        // For guest: if in active round and guest has selected a choice, preserve it locally
+        if (!this.isHost && this.mySelectedChoice && receivedRoom.status !== 'revealing' && receivedRoom.status !== 'roundResult' && receivedRoom.status !== 'matchOver') {
+          if (receivedRoom.p2) {
+            receivedRoom.p2.choice = this.mySelectedChoice;
+            receivedRoom.p2.hasChosen = true;
+          }
+        }
+
+        if (receivedRoom.status === 'roundResult' || receivedRoom.status === 'matchOver') {
+          this.mySelectedChoice = null;
+        }
+
+        this.currentRoom = receivedRoom;
+        if (this.updateCallback) this.updateCallback(receivedRoom);
       }
     });
 
@@ -146,10 +164,11 @@ class SupabaseGameEngine {
               avatar: guest.avatar || '⚡',
               score: 0,
               choice: null,
+              hasChosen: false,
               readyForNext: false,
               connected: true,
             },
-            status: 'roundResult', // Ready to start round 1
+            status: 'roundResult', // Ready for round 1
           };
           this.broadcastState();
         }
@@ -198,28 +217,39 @@ class SupabaseGameEngine {
   submitChoice(choice: Choice) {
     if (!this.currentRoom || !this.myPlayerId) return;
 
+    this.mySelectedChoice = choice;
+
     if (this.isHost) {
       this.hostP1Choice = choice;
       if (this.currentRoom.p1) {
         this.currentRoom.p1.choice = choice;
+        this.currentRoom.p1.hasChosen = true;
       }
-      this.checkAndResolveRound();
+
+      // If both players have picked -> trigger reveal
+      if (this.hostP1Choice && this.hostP2Choice) {
+        this.checkAndResolveRound();
+      } else {
+        // Broadcast that P1 has chosen (without revealing choice to P2 yet)
+        this.broadcastState();
+      }
     } else {
-      // Send choice to host
+      // Guest submits choice
+      if (this.currentRoom && this.currentRoom.p2) {
+        this.currentRoom = {
+          ...this.currentRoom,
+          p2: { ...this.currentRoom.p2, choice, hasChosen: true },
+        };
+        if (this.updateCallback) this.updateCallback(this.currentRoom);
+      }
+
+      // Send choice to host via broadcast
       if (this.channel) {
         this.channel.send({
           type: 'broadcast',
           event: 'player_action',
           payload: { type: 'submit_choice', playerId: this.myPlayerId, choice },
         });
-      }
-      // Optimistically update locally
-      if (this.currentRoom && this.currentRoom.p2) {
-        this.currentRoom = {
-          ...this.currentRoom,
-          p2: { ...this.currentRoom.p2, choice },
-        };
-        if (this.updateCallback) this.updateCallback(this.currentRoom);
       }
     }
   }
@@ -228,9 +258,19 @@ class SupabaseGameEngine {
     if (!this.currentRoom || !this.myPlayerId) return;
 
     if (this.isHost) {
-      if (this.currentRoom.p1) this.currentRoom.p1.readyForNext = true;
-      this.checkNextRoundReady();
+      this.hostP1Choice = null;
+      this.hostP2Choice = null;
+      this.mySelectedChoice = null;
+      this.currentRoom = {
+        ...this.currentRoom,
+        round: this.currentRoom.round + 1,
+        status: 'roundResult',
+        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, choice: null, hasChosen: false, readyForNext: false } : null,
+        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, choice: null, hasChosen: false, readyForNext: false } : null,
+      };
+      this.broadcastState();
     } else {
+      this.mySelectedChoice = null;
       if (this.channel) {
         this.channel.send({
           type: 'broadcast',
@@ -244,6 +284,7 @@ class SupabaseGameEngine {
   restartMatch() {
     if (!this.currentRoom) return;
 
+    this.mySelectedChoice = null;
     if (this.isHost) {
       this.hostP1Choice = null;
       this.hostP2Choice = null;
@@ -253,8 +294,8 @@ class SupabaseGameEngine {
         status: 'roundResult',
         winner: null,
         history: [],
-        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, score: 0, choice: null, readyForNext: false } : null,
-        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, score: 0, choice: null, readyForNext: false } : null,
+        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, score: 0, choice: null, hasChosen: false, readyForNext: false } : null,
+        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, score: 0, choice: null, hasChosen: false, readyForNext: false } : null,
       };
       this.broadcastState();
     } else {
@@ -319,9 +360,10 @@ class SupabaseGameEngine {
           p2: {
             id: action.playerId,
             name: action.name || 'Jugador 2',
-            avatar: action.avatar || '🦙',
+            avatar: action.avatar || '⚡',
             score: this.currentRoom.p2?.score || 0,
             choice: null,
+            hasChosen: false,
             readyForNext: false,
             connected: true,
           },
@@ -332,14 +374,16 @@ class SupabaseGameEngine {
     } else if (action.type === 'submit_choice') {
       this.hostP2Choice = action.choice;
       if (this.currentRoom.p2) {
-        this.currentRoom.p2.choice = action.choice;
+        this.currentRoom.p2.hasChosen = true;
       }
-      this.checkAndResolveRound();
+
+      if (this.hostP1Choice && this.hostP2Choice) {
+        this.checkAndResolveRound();
+      } else {
+        this.broadcastState();
+      }
     } else if (action.type === 'ready_next') {
-      if (this.currentRoom.p2) {
-        this.currentRoom.p2.readyForNext = true;
-      }
-      this.checkNextRoundReady();
+      this.setReadyForNext();
     } else if (action.type === 'restart_match') {
       this.restartMatch();
     } else if (action.type === 'update_max_score') {
@@ -358,6 +402,8 @@ class SupabaseGameEngine {
     this.currentRoom = {
       ...this.currentRoom,
       status: 'revealing',
+      p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, choice: this.hostP1Choice, hasChosen: true } : null,
+      p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, choice: this.hostP2Choice, hasChosen: true } : null,
     };
     this.broadcastState();
 
@@ -391,43 +437,51 @@ class SupabaseGameEngine {
         ...this.currentRoom,
         status: finalStatus,
         winner: matchWinner,
-        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, score: p1Score, choice: p1Choice, readyForNext: false } : null,
-        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, score: p2Score, choice: p2Choice, readyForNext: false } : null,
+        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, score: p1Score, choice: p1Choice, hasChosen: true } : null,
+        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, score: p2Score, choice: p2Choice, hasChosen: true } : null,
         history: [...this.currentRoom.history, roundResult],
         lastActionTime: Date.now(),
       };
 
       this.hostP1Choice = null;
       this.hostP2Choice = null;
+      this.mySelectedChoice = null;
       this.broadcastState();
     }, 1800);
-  }
-
-  private checkNextRoundReady() {
-    if (!this.currentRoom) return;
-
-    if (this.currentRoom.p1?.readyForNext && this.currentRoom.p2?.readyForNext) {
-      this.currentRoom = {
-        ...this.currentRoom,
-        round: this.currentRoom.round + 1,
-        status: 'roundResult',
-        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, choice: null, readyForNext: false } : null,
-        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, choice: null, readyForNext: false } : null,
-      };
-      this.broadcastState();
-    } else {
-      this.broadcastState();
-    }
   }
 
   private broadcastState() {
     if (!this.currentRoom) return;
 
     if (this.channel) {
+      // Build sanitized room payload for remote players (mask hidden choices before reveal)
+      const isRevealed =
+        this.currentRoom.status === 'revealing' ||
+        this.currentRoom.status === 'roundResult' ||
+        this.currentRoom.status === 'matchOver';
+
+      const sanitizedPayload: RoomState = {
+        ...this.currentRoom,
+        p1: this.currentRoom.p1
+          ? {
+              ...this.currentRoom.p1,
+              choice: isRevealed ? (this.currentRoom.p1.choice || this.hostP1Choice) : null,
+              hasChosen: Boolean(this.hostP1Choice || this.currentRoom.p1.hasChosen),
+            }
+          : null,
+        p2: this.currentRoom.p2
+          ? {
+              ...this.currentRoom.p2,
+              choice: isRevealed ? (this.currentRoom.p2.choice || this.hostP2Choice) : null,
+              hasChosen: Boolean(this.hostP2Choice || this.currentRoom.p2.hasChosen),
+            }
+          : null,
+      };
+
       this.channel.send({
         type: 'broadcast',
         event: 'room_state',
-        payload: this.currentRoom,
+        payload: sanitizedPayload,
       });
     }
 
@@ -447,6 +501,7 @@ class SupabaseGameEngine {
     this.isHost = false;
     this.hostP1Choice = null;
     this.hostP2Choice = null;
+    this.mySelectedChoice = null;
   }
 }
 

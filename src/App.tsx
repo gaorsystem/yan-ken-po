@@ -148,6 +148,9 @@ export default function App() {
     if (!room) return;
 
     if (isBotMode) {
+      const currentRound =
+        room.status === 'roundResult' && room.history.length > 0 ? room.round + 1 : room.round;
+
       // Handle locally in bot mode
       botHistoryRef.current.push(choice);
       const botChoice = getBotChoice(botHistoryRef.current);
@@ -155,8 +158,9 @@ export default function App() {
       // Set player choice and trigger reveal state
       const updatedRoom: RoomState = {
         ...room,
-        p1: room.p1 ? { ...room.p1, choice } : null,
-        p2: room.p2 ? { ...room.p2, choice: botChoice } : null,
+        round: currentRound,
+        p1: room.p1 ? { ...room.p1, choice, hasChosen: true } : null,
+        p2: room.p2 ? { ...room.p2, choice: botChoice, hasChosen: true } : null,
         status: 'revealing',
       };
       setRoom(updatedRoom);
@@ -182,7 +186,7 @@ export default function App() {
         const newHistory = [
           ...room.history,
           {
-            round: room.round,
+            round: currentRound,
             p1Choice: choice,
             p2Choice: botChoice,
             winner,
@@ -200,10 +204,11 @@ export default function App() {
 
         setRoom({
           ...room,
+          round: currentRound,
           status: finalStatus,
           winner: matchWinner,
-          p1: room.p1 ? { ...room.p1, choice, score: newP1Score } : null,
-          p2: room.p2 ? { ...room.p2, choice: botChoice, score: newP2Score } : null,
+          p1: room.p1 ? { ...room.p1, choice, hasChosen: true, score: newP1Score } : null,
+          p2: room.p2 ? { ...room.p2, choice: botChoice, hasChosen: true, score: newP2Score } : null,
           history: newHistory,
         });
       }, 1800);

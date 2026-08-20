@@ -210,7 +210,12 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
   };
 
   const lastRound = room.history.length > 0 ? room.history[room.history.length - 1] : null;
-  const isRoundResolved = room.status === 'roundResult' || room.status === 'matchOver';
+  const isRoundResolved =
+    (room.status === 'roundResult' || room.status === 'matchOver') &&
+    room.history.length > 0 &&
+    !me?.hasChosen &&
+    !rival?.hasChosen &&
+    Boolean(lastRound);
 
   return (
     <div className="w-full max-w-lg mx-auto relative pb-6 px-1">
@@ -593,8 +598,8 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                   >
                     {rival?.avatar || '🦙'}
                   </motion.div>
-                  {rival?.choice && !isRoundResolved && room.status !== 'revealing' && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 border-2 border-white rounded-full flex items-center justify-center text-[9px] text-white font-bold">
+                  {(rival?.choice || rival?.hasChosen) && !isRoundResolved && room.status !== 'revealing' && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 border-2 border-white rounded-full flex items-center justify-center text-[9px] text-white font-bold animate-pulse">
                       ✓
                     </span>
                   )}
@@ -640,11 +645,11 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                 </motion.div>
               ) : (
                 <div className="text-[11px] font-bold text-neutral-600">
-                  {me?.choice && !rival?.choice
-                    ? '🔒 Jugada lista — Esperando al rival...'
-                    : !me?.choice && rival?.choice
+                  {me?.choice && !rival?.hasChosen && !rival?.choice
+                    ? `🔒 Marcaste ${CHOICE_LABELS[me.choice]} — Esperando al rival...`
+                    : !me?.choice && (rival?.hasChosen || rival?.choice)
                     ? '⚡ ¡Tu rival ya eligió! Marca tu jugada...'
-                    : me?.choice && rival?.choice
+                    : me?.choice && (rival?.hasChosen || rival?.choice)
                     ? '✨ ¡Ambos listos! Revelando...'
                     : '⚡ ¡Elige Piedra, Papel o Tijera abajo!'}
                 </div>
@@ -669,6 +674,8 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                       ? 'bg-emerald-50 border-emerald-300 ring-4 ring-emerald-100'
                       : isRoundResolved && lastRound?.winner === rivalRole
                       ? 'bg-neutral-100 border-neutral-200 opacity-60'
+                      : me?.choice
+                      ? 'bg-red-50 border-red-300 ring-2 ring-red-100'
                       : 'bg-neutral-50 border-neutral-200'
                   }`}
                 >
@@ -686,7 +693,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                     : isRoundResolved && me?.choice
                     ? CHOICE_LABELS[me.choice]
                     : me?.choice
-                    ? CHOICE_LABELS[me.choice]
+                    ? `✓ ${CHOICE_LABELS[me.choice]}`
                     : 'Tu jugada'}
                 </div>
               </div>
@@ -710,6 +717,8 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                       ? 'bg-emerald-50 border-emerald-300 ring-4 ring-emerald-100'
                       : isRoundResolved && lastRound?.winner === myRole
                       ? 'bg-neutral-100 border-neutral-200 opacity-60'
+                      : (rival?.choice || rival?.hasChosen)
+                      ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-100'
                       : 'bg-neutral-50 border-neutral-200'
                   }`}
                 >
@@ -717,7 +726,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                     ? '✊'
                     : isRoundResolved && rival?.choice
                     ? CHOICE_EMOJIS[rival.choice]
-                    : rival?.choice
+                    : (rival?.choice || rival?.hasChosen)
                     ? '🔒'
                     : '❓'}
                 </motion.div>
@@ -726,7 +735,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                     ? '¡Listo!'
                     : isRoundResolved && rival?.choice
                     ? CHOICE_LABELS[rival.choice]
-                    : rival?.choice
+                    : (rival?.choice || rival?.hasChosen)
                     ? '¡Eligió!'
                     : 'Esperando...'}
                 </div>
@@ -758,7 +767,9 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
               {room.status === 'matchOver'
                 ? 'Partida Terminada'
                 : me?.choice && !isRoundResolved
-                ? 'Jugada enviada (esperando rival)'
+                ? `Jugada marcada: ${CHOICE_LABELS[me.choice]} (esperando rival)`
+                : (rival?.choice || rival?.hasChosen) && !isRoundResolved
+                ? '¡Tu rival ya marcó! Elige tu jugada:'
                 : 'Toca tu jugada:'}
             </div>
 
@@ -779,12 +790,15 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                     }}
                     className={`min-h-[76px] sm:min-h-[88px] py-3 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all touch-manipulation cursor-pointer ${
                       isSelected
-                        ? 'bg-red-600 text-white shadow-lg ring-4 ring-red-200 scale-[1.02]'
-                        : 'bg-neutral-50 active:bg-neutral-200 text-neutral-900 border border-neutral-200 active:scale-95'
+                        ? 'bg-red-600 text-white shadow-lg ring-4 ring-red-200 scale-[1.03] font-black'
+                        : 'bg-neutral-50 active:bg-neutral-200 text-neutral-900 border border-neutral-200 active:scale-95 hover:border-neutral-300'
                     } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <span className="text-3xl sm:text-4xl filter drop-shadow-xs">{CHOICE_EMOJIS[choiceKey]}</span>
-                    <span className="text-xs font-extrabold capitalize tracking-tight">{CHOICE_LABELS[choiceKey]}</span>
+                    <span className="text-xs font-extrabold capitalize tracking-tight flex items-center gap-1">
+                      {CHOICE_LABELS[choiceKey]}
+                      {isSelected && <span>✓</span>}
+                    </span>
                   </button>
                 );
               })}

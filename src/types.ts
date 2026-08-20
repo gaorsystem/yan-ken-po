@@ -8,6 +8,7 @@ export interface Player {
   avatar: string;
   score: number;
   choice: Choice | null;
+  hasChosen?: boolean;
   readyForNext: boolean;
   connected: boolean;
 }
