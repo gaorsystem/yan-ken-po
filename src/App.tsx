@@ -111,12 +111,18 @@ export default function App() {
   }, []);
 
   // Handle Create Room
-  const handleCreateRoom = async (name: string, avatar: string, maxScore: number) => {
+  const handleCreateRoom = async (
+    name: string,
+    avatar: string,
+    maxScore: number,
+    title?: string,
+    isPublic: boolean = true
+  ) => {
     try {
       const res = await fetch('/api/rooms/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, avatar, maxScore }),
+        body: JSON.stringify({ name, avatar, maxScore, title, isPublic }),
       });
       const data = await res.json();
       if (data.code) {
@@ -346,11 +352,11 @@ export default function App() {
   };
 
   return (
-    <main className="min-h-screen bg-neutral-100/80 text-neutral-900 flex flex-col justify-start items-center p-3 sm:p-6 select-none font-sans antialiased">
+    <main className="min-h-screen bg-neutral-100/90 text-neutral-900 flex flex-col justify-start items-center p-2 sm:p-6 select-none font-sans antialiased safe-top safe-bottom">
       {/* Background Graphic Accents */}
-      <div className="fixed inset-0 pointer-events-none opacity-40 overflow-hidden flex items-center justify-center">
-        <div className="w-[500px] h-[500px] bg-red-200/40 rounded-full blur-3xl -translate-y-24"></div>
-        <div className="w-[400px] h-[400px] bg-blue-200/30 rounded-full blur-3xl translate-y-36 translate-x-24"></div>
+      <div className="fixed inset-0 pointer-events-none opacity-30 overflow-hidden flex items-center justify-center">
+        <div className="w-[350px] sm:w-[500px] h-[350px] sm:h-[500px] bg-red-200/40 rounded-full blur-3xl -translate-y-24"></div>
+        <div className="w-[300px] sm:w-[400px] h-[300px] sm:h-[400px] bg-blue-200/30 rounded-full blur-3xl translate-y-36 translate-x-24"></div>
       </div>
 
       <div className="w-full relative z-10">

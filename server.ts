@@ -16,6 +16,8 @@ interface ServerPlayer extends Player {
 
 interface ServerRoom {
   code: string;
+  title?: string;
+  isPublic?: boolean;
   status: 'waiting' | 'countdown' | 'revealing' | 'roundResult' | 'matchOver';
   p1: ServerPlayer | null;
   p2: ServerPlayer | null;
@@ -83,6 +85,8 @@ function sanitizeRoomState(room: ServerRoom, forPlayerId?: string): RoomState {
 
   return {
     code: room.code,
+    title: room.title || `Sala de ${room.p1?.name || 'Jugador'}`,
+    isPublic: room.isPublic ?? true,
     status: room.status,
     p1: p1Sanitized,
     p2: p2Sanitized,
@@ -161,20 +165,56 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', activeRooms: rooms.size });
 });
 
+// List public active rooms waiting for opponent
+app.get('/api/rooms/public', (req, res) => {
+  const publicRooms: any[] = [];
+  const now = Date.now();
+
+  rooms.forEach((room) => {
+    // Room is public, waiting for P2, and was active recently (< 15 mins)
+    if (
+      room.isPublic !== false &&
+      room.status === 'waiting' &&
+      room.p1 &&
+      room.p1.connected &&
+      !room.p2 &&
+      now - room.lastActionTime < 15 * 60 * 1000
+    ) {
+      publicRooms.push({
+        code: room.code,
+        title: room.title || `Sala de ${room.p1.name}`,
+        hostName: room.p1.name,
+        hostAvatar: room.p1.avatar,
+        maxScore: room.maxScore,
+        createdAt: room.lastActionTime,
+      });
+    }
+  });
+
+  // Sort newest first, limit to 20
+  publicRooms.sort((a, b) => b.createdAt - a.createdAt);
+  res.json({ rooms: publicRooms.slice(0, 20) });
+});
+
 app.post('/api/rooms/create', (req, res) => {
-  const { name, avatar, maxScore } = req.body;
+  const { name, avatar, maxScore, title, isPublic } = req.body;
   const playerId = 'p1_' + Math.random().toString(36).substring(2, 9);
   let code = generateRoomCode();
   while (rooms.has(code)) {
     code = generateRoomCode();
   }
 
+  const playerName = (name || '').trim() || 'Jugador 1';
+  const roomTitle = (title || '').trim() || `Sala de ${playerName}`;
+
   const newRoom: ServerRoom = {
     code,
+    title: roomTitle,
+    isPublic: isPublic !== false, // default true
     status: 'waiting',
     p1: {
       id: playerId,
-      name: name || 'Jugador 1',
+      name: playerName,
       avatar: avatar || '🇵🇪',
       score: 0,
       choice: null,

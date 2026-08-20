@@ -31,6 +31,8 @@ export interface ReactionMessage {
 
 export interface RoomState {
   code: string;
+  title?: string;
+  isPublic?: boolean;
   status: 'waiting' | 'countdown' | 'revealing' | 'roundResult' | 'matchOver';
   p1: Player | null;
   p2: Player | null;
@@ -40,6 +42,15 @@ export interface RoomState {
   winner: 'p1' | 'p2' | null;
   countdownValue?: number;
   lastActionTime: number;
+}
+
+export interface PublicRoomItem {
+  code: string;
+  title: string;
+  hostName: string;
+  hostAvatar: string;
+  maxScore: number;
+  createdAt: number;
 }
 
 export interface WsMessage {
