@@ -12,6 +12,8 @@ import {
   Share2,
   Flame,
   MessageCircle,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 import { Choice, Player, RoomState, ReactionMessage } from '../types';
 import { sounds } from '../utils/audio';
@@ -69,6 +71,32 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const [isMuted, setIsMuted] = useState(sounds.isMuted());
   const [chantStep, setChantStep] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    sounds.playClick();
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen request failed:', err);
+    }
+  };
 
   const prevStatusRef = useRef<string>(room.status);
 
@@ -265,6 +293,16 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
               {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
             </button>
           )}
+
+          <button
+            id="btn-game-fullscreen"
+            type="button"
+            onClick={toggleFullscreen}
+            className="p-2 min-w-[36px] min-h-[36px] text-neutral-700 active:bg-neutral-200 bg-neutral-100 rounded-xl transition-colors flex items-center justify-center touch-manipulation"
+            title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4 text-neutral-900" /> : <Maximize className="w-4 h-4 text-neutral-700" />}
+          </button>
 
           <button
             type="button"

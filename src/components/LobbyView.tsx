@@ -10,6 +10,11 @@ import {
   Globe,
   ChevronRight,
   ArrowRight,
+  Maximize,
+  Minimize,
+  Swords,
+  Trophy,
+  Zap,
 } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { PublicRoomItem } from '../types';
@@ -43,6 +48,7 @@ export const LobbyView: React.FC<LobbyProps> = ({
   const [isMuted, setIsMuted] = useState(sounds.isMuted());
   const [errorMsg, setErrorMsg] = useState('');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
 
   // Public live rooms
   const [publicRooms, setPublicRooms] = useState<PublicRoomItem[]>([]);
@@ -53,11 +59,34 @@ export const LobbyView: React.FC<LobbyProps> = ({
     const savedAvatar = localStorage.getItem('yankenpo_avatar');
     if (savedName) setName(savedName);
     if (savedAvatar) setAvatar(savedAvatar);
+
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
   const saveProfile = (n: string, a: string) => {
     localStorage.setItem('yankenpo_name', n);
     localStorage.setItem('yankenpo_avatar', a);
+  };
+
+  const toggleFullscreen = async () => {
+    sounds.playClick();
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen request failed:', err);
+    }
   };
 
   const fetchPublicRooms = async () => {
@@ -118,65 +147,91 @@ export const LobbyView: React.FC<LobbyProps> = ({
 
   return (
     <div className="w-full max-w-sm mx-auto px-2 pb-6">
-      {/* Top Floating Badge & Mute Toggle */}
-      <div className="flex items-center justify-between mb-2 px-1">
+      {/* Top Floating Badge & Header Tools (Sound + Fullscreen) */}
+      <div className="flex items-center justify-between mb-3 px-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-100/90 text-red-800 rounded-full text-[11px] font-bold tracking-wider uppercase border border-red-200 shadow-xs">
           <span>🇵🇪 Yan Ken Po</span>
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
           <span>En Vivo</span>
         </div>
 
-        <button
-          type="button"
-          onClick={toggleSound}
-          className="w-9 h-9 rounded-xl bg-white/90 active:bg-neutral-100 border border-neutral-200 text-neutral-700 flex items-center justify-center transition-colors shadow-xs touch-manipulation"
-          title={isMuted ? 'Activar sonido' : 'Silenciar'}
-        >
-          {isMuted ? <VolumeX className="w-4 h-4 text-neutral-400" /> : <Volume2 className="w-4 h-4 text-neutral-800" />}
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Fullscreen Button */}
+          <button
+            id="btn-toggle-fullscreen"
+            type="button"
+            onClick={toggleFullscreen}
+            className="w-9 h-9 rounded-xl bg-white/95 active:bg-neutral-100 border border-neutral-200 text-neutral-700 flex items-center justify-center transition-colors shadow-xs touch-manipulation"
+            title={isFullscreen ? 'Salir de pantalla completa' : 'Activar pantalla completa'}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4 text-neutral-900" /> : <Maximize className="w-4 h-4 text-neutral-700" />}
+          </button>
+
+          {/* Sound Mute Toggle */}
+          <button
+            type="button"
+            onClick={toggleSound}
+            className="w-9 h-9 rounded-xl bg-white/95 active:bg-neutral-100 border border-neutral-200 text-neutral-700 flex items-center justify-center transition-colors shadow-xs touch-manipulation"
+            title={isMuted ? 'Activar sonido' : 'Silenciar'}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4 text-neutral-400" /> : <Volume2 className="w-4 h-4 text-neutral-800" />}
+          </button>
+        </div>
       </div>
 
-      {/* ANIMATED FLOATING HERO ILLUSTRATION */}
+      {/* ENHANCED HERO PORTADA (Portada Impactante y Animada) */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center my-3"
+        className="text-center my-3 relative"
       >
-        <div className="relative inline-flex items-center justify-center my-2">
-          {/* Floating Glow backdrop */}
-          <div className="absolute inset-0 bg-red-400/20 rounded-full blur-2xl transform scale-150"></div>
+        {/* Glow ambient background rings */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gradient-to-tr from-red-500/20 via-amber-400/20 to-rose-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
-          {/* Floating animated hand icons */}
-          <div className="relative flex items-center justify-center gap-3 bg-white/90 backdrop-blur-md p-4 rounded-3xl border border-neutral-200 shadow-xl">
-            <motion.span
-              animate={{ y: [0, -7, 0], rotate: [-4, -9, -4] }}
+        {/* Floating animated hand icons card with stadium badges */}
+        <div className="relative inline-block my-2">
+          <div className="relative flex items-center justify-center gap-2 sm:gap-3 bg-white/95 backdrop-blur-md px-5 py-4 rounded-3xl border border-neutral-200/90 shadow-xl ring-4 ring-red-50">
+            {/* Tijera */}
+            <motion.div
+              animate={{ y: [0, -8, 0], rotate: [-6, -14, -6] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-              className="text-4xl filter drop-shadow-md select-none"
+              className="w-13 h-13 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-3xl shadow-xs"
             >
               ✂️
-            </motion.span>
-            <motion.span
-              animate={{ y: [0, 7, 0], scale: [1, 1.12, 1] }}
+            </motion.div>
+
+            {/* Piedra (Center Master) */}
+            <motion.div
+              animate={{ y: [0, 8, 0], scale: [1, 1.12, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
-              className="text-5xl filter drop-shadow-lg select-none"
+              className="w-16 h-16 rounded-2xl bg-red-50 border-2 border-red-300 flex items-center justify-center text-4xl shadow-md ring-2 ring-red-100 z-10"
             >
               🪨
-            </motion.span>
-            <motion.span
-              animate={{ y: [0, -7, 0], rotate: [4, 9, 4] }}
+            </motion.div>
+
+            {/* Papel */}
+            <motion.div
+              animate={{ y: [0, -8, 0], rotate: [6, 14, 6] }}
               transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
-              className="text-4xl filter drop-shadow-md select-none"
+              className="w-13 h-13 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-3xl shadow-xs"
             >
               📄
-            </motion.span>
+            </motion.div>
+          </div>
+
+          {/* Floating Live VS Pill */}
+          <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-neutral-900 text-white font-black text-[10px] uppercase px-3 py-0.5 rounded-full border-2 border-white shadow-md flex items-center gap-1">
+            <Zap className="w-3 h-3 text-amber-400 fill-amber-400" />
+            <span>Duelo en Vivo</span>
           </div>
         </div>
 
-        <h1 className="text-3xl font-black text-neutral-900 tracking-tight mt-2">
-          Yan Ken Po
+        <h1 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight mt-4 flex items-center justify-center gap-1.5">
+          <span>Yan Ken Po</span>
+          <span className="text-red-600">Perú</span>
         </h1>
-        <p className="text-neutral-500 text-xs mt-0.5">
-          ¡Duelo en vivo al instante para 2 personas!
+        <p className="text-neutral-500 text-xs mt-1 max-w-[260px] mx-auto leading-tight font-medium">
+          Duelos online en tiempo real para 2 jugadores desde celular o PC 🇵🇪
         </p>
       </motion.div>
 
