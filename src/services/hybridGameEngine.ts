@@ -64,7 +64,7 @@ class SupabaseGameEngine {
       p1: {
         id: playerId,
         name: playerName || 'Jugador 1',
-        avatar: avatar || '🇵🇪',
+        avatar: avatar || '🔥',
         score: 0,
         choice: null,
         readyForNext: false,
@@ -143,7 +143,7 @@ class SupabaseGameEngine {
             p2: {
               id: guest.id,
               name: guest.name || 'Jugador 2',
-              avatar: guest.avatar || '🦙',
+              avatar: guest.avatar || '⚡',
               score: 0,
               choice: null,
               readyForNext: false,

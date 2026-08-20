@@ -32,7 +32,7 @@ interface LobbyProps {
   initialCode?: string;
 }
 
-const AVATARS = ['🇵🇪', '🦙', '🌽', '🏔️', '☀️', '🥑', '🎮', '⚡', '👑', '🥊', '🦊', '🥋'];
+const AVATARS = ['🔥', '⚡', '👑', '🥊', '🦊', '🥋', '🎮', '🥑', '☀️', '🦁', '🚀', '🎯'];
 
 export const LobbyView: React.FC<LobbyProps> = ({
   onJoinRoom,
@@ -41,7 +41,7 @@ export const LobbyView: React.FC<LobbyProps> = ({
   initialCode = '',
 }) => {
   const [name, setName] = useState('');
-  const [avatar, setAvatar] = useState('🇵🇪');
+  const [avatar, setAvatar] = useState('🔥');
   const [showJoinModal, setShowJoinModal] = useState(Boolean(initialCode));
   const [showPublicRoomsModal, setShowPublicRoomsModal] = useState(false);
   const [joinCode, setJoinCode] = useState(initialCode);
@@ -148,7 +148,7 @@ export const LobbyView: React.FC<LobbyProps> = ({
       {/* Top Floating Badge & Header Tools (Sound + Fullscreen) */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-100/90 text-red-800 rounded-full text-[11px] font-bold tracking-wider uppercase border border-red-200 shadow-xs">
-          <span>🇵🇪 Yan Ken Po</span>
+          <span>Yan Ken Po</span>
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
           <span>En Vivo</span>
         </div>
@@ -224,12 +224,11 @@ export const LobbyView: React.FC<LobbyProps> = ({
           </div>
         </div>
 
-        <h1 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight mt-4 flex items-center justify-center gap-1.5">
-          <span>Yan Ken Po</span>
-          <span className="text-red-600">Perú</span>
+        <h1 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight mt-4 flex items-center justify-center">
+          Yan Ken Po
         </h1>
         <p className="text-neutral-500 text-xs mt-1 max-w-[260px] mx-auto leading-tight font-medium">
-          Duelos online en tiempo real para 2 jugadores desde celular o PC 🇵🇪
+          Duelos online en tiempo real para 2 jugadores desde celular o PC
         </p>
       </motion.div>
 

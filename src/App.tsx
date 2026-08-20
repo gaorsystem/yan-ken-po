@@ -126,8 +126,8 @@ export default function App() {
       },
       p2: {
         id: 'bot_p2',
-        name: 'IncaBot 🤖',
-        avatar: '🦙',
+        name: 'Bot 🤖',
+        avatar: '🤖',
         score: 0,
         choice: null,
         readyForNext: false,

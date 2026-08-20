@@ -52,7 +52,7 @@ const QUICK_REACTIONS = [
   { text: '¡Vamos!', emoji: '💪' },
   { text: '😂', emoji: '😂' },
   { text: '😎', emoji: '😎' },
-  { text: '🇵🇪', emoji: '🇵🇪' },
+  { text: '🎉', emoji: '🎉' },
 ];
 
 export const GameRoomView: React.FC<GameRoomProps> = ({
@@ -264,7 +264,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
             </div>
           ) : (
             <div className="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-xl border border-emerald-200 text-xs font-bold">
-              <span>🤖 IncaBot (Práctica)</span>
+              <span>🤖 Bot (Práctica)</span>
             </div>
           )}
 

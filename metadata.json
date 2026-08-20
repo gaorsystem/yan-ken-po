@@ -1,6 +1,6 @@
 {
-  "name": "Yan Ken Po Online",
-  "description": "Juego en línea en tiempo real de Yan Ken Po (Piedra, Papel o Tijera) para 2 jugadores con salas, marcador y chat rápido.",
+  "name": "Yan Ken Po",
+  "description": "Juego en tiempo real de Yan Ken Po (Piedra, Papel o Tijera) para 2 jugadores con salas privadas, marcador y chat rápido.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
