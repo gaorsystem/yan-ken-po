@@ -8,18 +8,15 @@ import { LobbyView } from './components/LobbyView';
 import { GameRoomView } from './components/GameRoomView';
 import { Choice, RoomState, ReactionMessage } from './types';
 import { getBotChoice } from './utils/bot';
-import { sounds } from './utils/audio';
+import { gameEngine } from './services/hybridGameEngine';
 
 export default function App() {
   const [initialRoomCode, setInitialRoomCode] = useState<string>('');
   const [room, setRoom] = useState<RoomState | null>(null);
   const [myPlayerId, setMyPlayerId] = useState<string>('');
   const [isBotMode, setIsBotMode] = useState<boolean>(false);
-  const [isConnected, setIsConnected] = useState<boolean>(false);
   const [reactions, setReactions] = useState<ReactionMessage[]>([]);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const botHistoryRef = useRef<Choice[]>([]);
 
   // Check URL query parameters for ?room=CODE
@@ -33,132 +30,79 @@ export default function App() {
     } catch (e) {}
   }, []);
 
-  // WebSocket Connection Handler
-  const connectWebSocket = useCallback(
-    (code: string, playerId: string, name: string, avatar: string) => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
-
-      try {
-        const ws = new WebSocket(wsUrl);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          setIsConnected(true);
-          ws.send(
-            JSON.stringify({
-              type: 'join',
-              payload: { code, playerId, name, avatar },
-            })
-          );
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'state') {
-              setRoom(data.payload);
-            } else if (data.type === 'reaction') {
-              setReactions((prev) => [...prev.slice(-10), data.payload]);
-            }
-          } catch (err) {
-            console.error('Error handling WS message:', err);
-          }
-        };
-
-        ws.onclose = () => {
-          setIsConnected(false);
-          // Try to reconnect if still in a room
-          if (room?.code && !isBotMode) {
-            if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = setTimeout(() => {
-              connectWebSocket(code, playerId, name, avatar);
-            }, 2000);
-          }
-        };
-
-        ws.onerror = (err) => {
-          console.error('WebSocket error:', err);
-        };
-      } catch (e) {
-        console.error('WebSocket init failed:', e);
-      }
-    },
-    [room?.code, isBotMode]
-  );
-
-  // Keep-alive ping
-  useEffect(() => {
-    const pingInterval = setInterval(() => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'ping' }));
-      }
-    }, 15000);
-
-    return () => clearInterval(pingInterval);
-  }, []);
-
-  // Cleanup on unmount
+  // Cleanup when leaving
   useEffect(() => {
     return () => {
-      if (wsRef.current) wsRef.current.close();
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      gameEngine.leaveRoom();
     };
   }, []);
 
-  // Handle Create Room
-  const handleCreateRoom = async (
+  // Handle Create Room (Works in AI Studio, Vercel, Supabase and überall)
+  const handleCreateRoom = (
     name: string,
     avatar: string,
     maxScore: number,
     title?: string,
     isPublic: boolean = true
   ) => {
-    try {
-      const res = await fetch('/api/rooms/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, avatar, maxScore, title, isPublic }),
-      });
-      const data = await res.json();
-      if (data.code) {
-        setMyPlayerId(data.playerId);
-        setRoom(data.state);
-        setIsBotMode(false);
-        connectWebSocket(data.code, data.playerId, name, avatar);
-        // Update URL query without refresh
-        window.history.replaceState({}, '', `?room=${data.code}`);
+    const { code, playerId, state } = gameEngine.createRoom(
+      name,
+      avatar,
+      maxScore,
+      title,
+      (updatedState) => {
+        setRoom({ ...updatedState });
+      },
+      (reaction) => {
+        setReactions((prev) => [...prev.slice(-10), reaction]);
       }
-    } catch (err) {
-      alert('Error de conexión al crear la sala');
-    }
+    );
+
+    setMyPlayerId(playerId);
+    setRoom(state);
+    setIsBotMode(false);
+    window.history.replaceState({}, '', `?room=${code}`);
   };
 
   // Handle Join Room
-  const handleJoinRoom = async (code: string, name: string, avatar: string) => {
-    try {
-      const res = await fetch('/api/rooms/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, name, avatar }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'No se pudo unir a la sala');
-        return;
+  const handleJoinRoom = (code: string, name: string, avatar: string) => {
+    const cleanCode = code.trim().toUpperCase();
+    const { playerId } = gameEngine.joinRoom(
+      cleanCode,
+      name,
+      avatar,
+      (updatedState) => {
+        setRoom({ ...updatedState });
+      },
+      (reaction) => {
+        setReactions((prev) => [...prev.slice(-10), reaction]);
       }
-      setMyPlayerId(data.playerId);
-      setRoom(data.state);
-      setIsBotMode(false);
-      connectWebSocket(data.code, data.playerId, name, avatar);
-      window.history.replaceState({}, '', `?room=${data.code}`);
-    } catch (err) {
-      alert('Error al conectar con la sala');
-    }
+    );
+
+    setMyPlayerId(playerId);
+    setIsBotMode(false);
+    // Temporary waiting state until Host syncs the full room
+    setRoom({
+      code: cleanCode,
+      title: `Sala ${cleanCode}`,
+      status: 'roundResult',
+      p1: null,
+      p2: {
+        id: playerId,
+        name,
+        avatar,
+        score: 0,
+        choice: null,
+        readyForNext: false,
+        connected: true,
+      },
+      round: 1,
+      maxScore: 3,
+      history: [],
+      winner: null,
+      lastActionTime: Date.now(),
+    });
+    window.history.replaceState({}, '', `?room=${cleanCode}`);
   };
 
   // Handle Solo Practice Mode (Bot)
@@ -199,7 +143,7 @@ export default function App() {
     setRoom(localRoom);
   };
 
-  // User submits choice
+  // User submits choice (Piedra, Papel o Tijera)
   const handlePlayChoice = (choice: Choice) => {
     if (!room) return;
 
@@ -264,15 +208,7 @@ export default function App() {
         });
       }, 1800);
     } else {
-      // Send to WebSocket server
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: 'playChoice',
-            payload: { choice },
-          })
-        );
-      }
+      gameEngine.submitChoice(choice);
     }
   };
 
@@ -285,13 +221,11 @@ export default function App() {
         ...room,
         round: room.round + 1,
         status: 'roundResult',
-        p1: room.p1 ? { ...room.p1, choice: null } : null,
-        p2: room.p2 ? { ...room.p2, choice: null } : null,
+        p1: room.p1 ? { ...room.p1, choice: null, readyForNext: false } : null,
+        p2: room.p2 ? { ...room.p2, choice: null, readyForNext: false } : null,
       });
     } else {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'nextRound' }));
-      }
+      gameEngine.setReadyForNext();
     }
   };
 
@@ -306,13 +240,11 @@ export default function App() {
         status: 'roundResult',
         winner: null,
         history: [],
-        p1: room.p1 ? { ...room.p1, score: 0, choice: null } : null,
-        p2: room.p2 ? { ...room.p2, score: 0, choice: null } : null,
+        p1: room.p1 ? { ...room.p1, score: 0, choice: null, readyForNext: false } : null,
+        p2: room.p2 ? { ...room.p2, score: 0, choice: null, readyForNext: false } : null,
       });
     } else {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'restartMatch' }));
-      }
+      gameEngine.restartMatch();
     }
   };
 
@@ -329,22 +261,13 @@ export default function App() {
       };
       setReactions((prev) => [...prev.slice(-10), msg]);
     } else {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            type: 'reaction',
-            payload: { text, emoji },
-          })
-        );
-      }
+      gameEngine.sendReaction(text, emoji || '🔥', room?.p1?.id === myPlayerId ? room?.p1?.name || 'Jugador' : room?.p2?.name || 'Jugador');
     }
   };
 
   // Leave room
   const handleLeaveRoom = () => {
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
+    gameEngine.leaveRoom();
     setRoom(null);
     setIsBotMode(false);
     setReactions([]);
@@ -378,7 +301,7 @@ export default function App() {
             onSendReaction={handleSendReaction}
             onLeaveRoom={handleLeaveRoom}
             reactions={reactions}
-            isConnected={isConnected}
+            isConnected={true}
           />
         )}
       </div>
