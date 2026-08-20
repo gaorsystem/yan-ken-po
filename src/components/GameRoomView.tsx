@@ -169,38 +169,75 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
     }
   }, [room.status, room.round, room.winner, myRole]);
 
-  const copyInviteLink = () => {
-    sounds.playClick();
-    const hostName = me?.name || 'Tu amigo';
+  const getInviteMessage = () => {
+    const hostName = me?.name?.trim() || 'Tu amigo';
     const hostAvatar = me?.avatar || '🔥';
     const url = `${window.location.origin}${window.location.pathname}?room=${room.code}`;
-    const message = `🎮 ¡${hostName} ${hostAvatar} te desafía a Yan Ken Po en vivo!\n👉 Entra al duelo, escoge tu Emoji y tu Nombre aquí: ${url}`;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-    }
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+    return `🎮 ¡${hostName} (${hostAvatar}) te desafía a Yan Ken Po en vivo!\n👉 Entra, escoge tu Emoji y tu Nombre aquí para empezar: ${url}`;
   };
 
-  const copyCode = () => {
+  const copyInviteLink = async () => {
     sounds.playClick();
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(room.code);
+    const message = getInviteMessage();
+    let success = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(message);
+        success = true;
+      }
+    } catch (e) {
+      success = false;
     }
+    if (!success) {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = message;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      } catch (err) {}
+    }
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2200);
+  };
+
+  const copyCode = async () => {
+    sounds.playClick();
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(room.code);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = room.code;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+    } catch (e) {}
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const shareNative = () => {
     sounds.playClick();
-    const hostName = me?.name || 'Tu amigo';
-    const hostAvatar = me?.avatar || '🔥';
+    const hostName = me?.name?.trim() || 'Tu amigo';
+    const message = getInviteMessage();
     const url = `${window.location.origin}${window.location.pathname}?room=${room.code}`;
     if (navigator.share) {
       navigator
         .share({
           title: `¡Desafío de Yan Ken Po de ${hostName}!`,
-          text: `🎮 ¡${hostName} ${hostAvatar} te desafía a Yan Ken Po en vivo! Escoge tu Emoji y Nombre para jugar en tiempo real:`,
+          text: message,
           url,
         })
         .catch(() => {});
@@ -386,24 +423,22 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
             <button
               id="btn-copy-invite"
               type="button"
               onClick={copyInviteLink}
-              className="h-12 min-h-[48px] bg-red-600 active:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow transition-all touch-manipulation"
+              className="h-12 min-h-[48px] bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all touch-manipulation cursor-pointer active:scale-98"
             >
-              {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              <span>{copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace Directo'}</span>
+              {copiedLink ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedLink ? '¡Invitación Copiada!' : 'Copiar Invitación Completa'}</span>
             </button>
 
             <a
-              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                `🎮 ¡${me?.name || 'Tu amigo'} (${me?.avatar || '🔥'}) te desafía a Yan Ken Po en vivo!\n👉 Entra, escoge tu Emoji y tu Nombre aquí para empezar: ${window.location.origin}${window.location.pathname}?room=${room.code}`
-              )}`}
+              href={`https://wa.me/?text=${encodeURIComponent(getInviteMessage())}`}
               target="_blank"
               rel="noreferrer"
-              className="h-12 min-h-[48px] px-3 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow transition-all touch-manipulation"
+              className="h-12 min-h-[48px] px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md transition-all touch-manipulation cursor-pointer active:scale-98"
             >
               <span>Invitar por WhatsApp 📲</span>
             </a>
