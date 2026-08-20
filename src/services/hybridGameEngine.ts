@@ -72,7 +72,7 @@ class SupabaseGameEngine {
       },
       p2: null,
       round: 1,
-      maxScore: maxScore === 3 || maxScore === 5 ? maxScore : 3,
+      maxScore: maxScore >= 0 ? maxScore : 3,
       history: [],
       winner: null,
       lastActionTime: Date.now(),
@@ -269,12 +269,20 @@ class SupabaseGameEngine {
   }
 
   updateMaxScore(maxScore: number) {
-    if (this.isHost && this.currentRoom) {
+    if (this.currentRoom) {
       this.currentRoom = {
         ...this.currentRoom,
         maxScore,
       };
-      this.broadcastState();
+      if (this.isHost) {
+        this.broadcastState();
+      } else if (this.channel) {
+        this.channel.send({
+          type: 'broadcast',
+          event: 'player_action',
+          payload: { type: 'update_max_score', maxScore, playerId: this.myPlayerId },
+        });
+      }
     }
   }
 
@@ -334,6 +342,12 @@ class SupabaseGameEngine {
       this.checkNextRoundReady();
     } else if (action.type === 'restart_match') {
       this.restartMatch();
+    } else if (action.type === 'update_max_score') {
+      this.currentRoom = {
+        ...this.currentRoom,
+        maxScore: action.maxScore,
+      };
+      this.broadcastState();
     }
   }
 

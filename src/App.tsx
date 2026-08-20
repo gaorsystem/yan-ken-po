@@ -265,6 +265,18 @@ export default function App() {
     }
   };
 
+  // Update Max Score (3, 5, Libre, or Custom)
+  const handleUpdateMaxScore = (maxScore: number) => {
+    if (isBotMode && room) {
+      setRoom({
+        ...room,
+        maxScore,
+      });
+    } else {
+      gameEngine.updateMaxScore(maxScore);
+    }
+  };
+
   // Leave room
   const handleLeaveRoom = () => {
     gameEngine.leaveRoom();
@@ -298,6 +310,7 @@ export default function App() {
             onPlayChoice={handlePlayChoice}
             onNextRound={handleNextRound}
             onRestartMatch={handleRestartMatch}
+            onChangeMaxScore={handleUpdateMaxScore}
             onSendReaction={handleSendReaction}
             onLeaveRoom={handleLeaveRoom}
             reactions={reactions}

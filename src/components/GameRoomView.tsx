@@ -25,6 +25,7 @@ interface GameRoomProps {
   onPlayChoice: (choice: Choice) => void;
   onNextRound: () => void;
   onRestartMatch: () => void;
+  onChangeMaxScore?: (maxScore: number) => void;
   onSendReaction: (text: string, emoji?: string) => void;
   onLeaveRoom: () => void;
   reactions: ReactionMessage[];
@@ -61,6 +62,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
   onPlayChoice,
   onNextRound,
   onRestartMatch,
+  onChangeMaxScore,
   onSendReaction,
   onLeaveRoom,
   reactions,
@@ -69,6 +71,8 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showScorePicker, setShowScorePicker] = useState(false);
+  const [customScoreInput, setCustomScoreInput] = useState(String(room.maxScore || 3));
   const [isMuted, setIsMuted] = useState(sounds.isMuted());
   const [chantStep, setChantStep] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
@@ -332,10 +336,11 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
               sounds.playClick();
               onLeaveRoom();
             }}
-            className="p-2 min-w-[36px] min-h-[36px] text-red-600 active:bg-red-200 bg-red-50 rounded-xl transition-colors flex items-center justify-center touch-manipulation"
-            title="Salir"
+            className="px-2.5 py-1.5 min-h-[36px] text-red-600 active:bg-red-200 bg-red-50 hover:bg-red-100 rounded-xl transition-colors flex items-center gap-1 text-xs font-bold touch-manipulation cursor-pointer border border-red-200/60"
+            title="Salir y volver al menú"
           >
             <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Salir</span>
           </button>
         </div>
       </div>
@@ -369,7 +374,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
             <button
               id="btn-copy-invite"
               type="button"
@@ -391,6 +396,18 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
               <span>Invitar por WhatsApp 📲</span>
             </a>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playClick();
+              onLeaveRoom();
+            }}
+            className="w-full py-2.5 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 text-neutral-700 text-xs font-bold rounded-xl border border-neutral-200 flex items-center justify-center gap-1.5 transition-colors touch-manipulation cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5 text-neutral-500" />
+            <span>Cancelar y Volver al Menú Principal</span>
+          </button>
         </motion.div>
       )}
 
@@ -401,10 +418,106 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
           <div className="bg-white rounded-2xl border border-neutral-200 p-3 shadow-xs">
             <div className="flex justify-between items-center text-[11px] font-bold text-neutral-500 mb-2 px-1">
               <span>Ronda {room.round}</span>
-              <span className="bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded-full border border-neutral-200 text-[10px]">
-                {room.maxScore > 0 ? `Meta: ${room.maxScore} pts` : 'Modo Libre'}
-              </span>
+              
+              {/* Change Target Score Button */}
+              {onChangeMaxScore ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playClick();
+                    setShowScorePicker(!showScorePicker);
+                  }}
+                  className="bg-neutral-100 active:bg-neutral-200 hover:bg-neutral-200 text-neutral-800 px-2.5 py-1 rounded-full border border-neutral-200 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer touch-manipulation"
+                  title="Cambiar meta de puntos"
+                >
+                  <span>{room.maxScore > 0 ? `Meta: ${room.maxScore} pts` : 'Modo Libre'}</span>
+                  <span className="text-[9px] text-red-500 font-extrabold">✏️ Cambiar</span>
+                </button>
+              ) : (
+                <span className="bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded-full border border-neutral-200 text-[10px]">
+                  {room.maxScore > 0 ? `Meta: ${room.maxScore} pts` : 'Modo Libre'}
+                </span>
+              )}
             </div>
+
+            {/* Score Selector Dropdown / Bar */}
+            {showScorePicker && onChangeMaxScore && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-2.5 p-2 bg-neutral-50 rounded-xl border border-neutral-200 text-center"
+              >
+                <div className="text-[10px] font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
+                  Selecciona la meta de puntos:
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playSelect();
+                      onChangeMaxScore(3);
+                      setShowScorePicker(false);
+                    }}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
+                      room.maxScore === 3
+                        ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                        : 'bg-white text-neutral-800 border-neutral-200'
+                    }`}
+                  >
+                    3 pts
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playSelect();
+                      onChangeMaxScore(5);
+                      setShowScorePicker(false);
+                    }}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
+                      room.maxScore === 5
+                        ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                        : 'bg-white text-neutral-800 border-neutral-200'
+                    }`}
+                  >
+                    5 pts
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playSelect();
+                      onChangeMaxScore(10);
+                      setShowScorePicker(false);
+                    }}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
+                      room.maxScore === 10
+                        ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                        : 'bg-white text-neutral-800 border-neutral-200'
+                    }`}
+                  >
+                    10 pts
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sounds.playSelect();
+                      onChangeMaxScore(0);
+                      setShowScorePicker(false);
+                    }}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
+                      room.maxScore === 0
+                        ? 'bg-red-600 text-white border-red-600 shadow-xs'
+                        : 'bg-white text-neutral-800 border-neutral-200'
+                    }`}
+                  >
+                    Libre ♾️
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             <div className="grid grid-cols-11 items-center gap-1.5">
               {/* Player 1 (You) */}
@@ -526,12 +639,14 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                   )}
                 </motion.div>
               ) : (
-                <div className="text-[11px] font-semibold text-neutral-500">
-                  {me?.choice
-                    ? rival?.choice
-                      ? '¡Revelando jugadas!'
-                      : `Esperando a ${rival?.name || 'rival'}...`
-                    : '¡Elige Piedra, Papel o Tijera abajo!'}
+                <div className="text-[11px] font-bold text-neutral-600">
+                  {me?.choice && !rival?.choice
+                    ? '🔒 Jugada lista — Esperando al rival...'
+                    : !me?.choice && rival?.choice
+                    ? '⚡ ¡Tu rival ya eligió! Marca tu jugada...'
+                    : me?.choice && rival?.choice
+                    ? '✨ ¡Ambos listos! Revelando...'
+                    : '⚡ ¡Elige Piedra, Papel o Tijera abajo!'}
                 </div>
               )}
             </div>
