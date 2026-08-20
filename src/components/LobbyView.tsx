@@ -604,9 +604,10 @@ export const LobbyView: React.FC<LobbyProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Rules Mini Footer */}
-      <div className="mt-5 text-center text-[10px] text-neutral-400 font-medium">
-        <span>🪨 vence a ✂️</span> • <span>📄 vence a 🪨</span> • <span>✂️ vence a 📄</span>
+      {/* Footer Desarrollado por */}
+      <div className="mt-5 text-center text-xs text-neutral-400 font-medium">
+        <span>Desarrollado por </span>
+        <span className="font-bold text-neutral-700">tuchinito.app</span>
       </div>
     </div>
   );
