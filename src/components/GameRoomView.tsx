@@ -72,6 +72,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
   const [copiedCode, setCopiedCode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showScorePicker, setShowScorePicker] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [customScoreInput, setCustomScoreInput] = useState(String(room.maxScore || 3));
   const [isMuted, setIsMuted] = useState(sounds.isMuted());
   const [chantStep, setChantStep] = useState<number | null>(null);
@@ -170,7 +171,10 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
 
   const copyInviteLink = () => {
     sounds.playClick();
+    const hostName = me?.name || 'Tu amigo';
+    const hostAvatar = me?.avatar || '🔥';
     const url = `${window.location.origin}${window.location.pathname}?room=${room.code}`;
+    const message = `🎮 ¡${hostName} ${hostAvatar} te desafía a Yan Ken Po en vivo!\n👉 Entra al duelo, escoge tu Emoji y tu Nombre aquí: ${url}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url);
     }
@@ -189,12 +193,14 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
 
   const shareNative = () => {
     sounds.playClick();
+    const hostName = me?.name || 'Tu amigo';
+    const hostAvatar = me?.avatar || '🔥';
     const url = `${window.location.origin}${window.location.pathname}?room=${room.code}`;
     if (navigator.share) {
       navigator
         .share({
-          title: room.title || 'Yan Ken Po en Vivo',
-          text: `¡Únete a mi partida de Yan Ken Po en vivo (${room.title || 'Sala de Yan Ken Po'})! Código: ${room.code}`,
+          title: `¡Desafío de Yan Ken Po de ${hostName}!`,
+          text: `🎮 ¡${hostName} ${hostAvatar} te desafía a Yan Ken Po en vivo! Escoge tu Emoji y Nombre para jugar en tiempo real:`,
           url,
         })
         .catch(() => {});
@@ -340,10 +346,10 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
             type="button"
             onClick={() => {
               sounds.playClick();
-              onLeaveRoom();
+              setShowLeaveConfirm(true);
             }}
             className="px-2.5 py-1.5 min-h-[36px] text-red-600 active:bg-red-200 bg-red-50 hover:bg-red-100 rounded-xl transition-colors flex items-center gap-1 text-xs font-bold touch-manipulation cursor-pointer border border-red-200/60"
-            title="Salir y volver al menú"
+            title="Salir y eliminar sala"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Salir</span>
@@ -393,7 +399,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
 
             <a
               href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                `¡Te desafío a Yan Ken Po en vivo en ${room.title || 'mi sala'}! Únete aquí con 1 clic: ${window.location.origin}${window.location.pathname}?room=${room.code}`
+                `🎮 ¡${me?.name || 'Tu amigo'} (${me?.avatar || '🔥'}) te desafía a Yan Ken Po en vivo!\n👉 Entra, escoge tu Emoji y tu Nombre aquí para empezar: ${window.location.origin}${window.location.pathname}?room=${room.code}`
               )}`}
               target="_blank"
               rel="noreferrer"
@@ -900,6 +906,105 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                   Volver al Menú Principal
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CONFIRMATION MODAL: LEAVE AND DELETE ROOM CODE */}
+      <AnimatePresence>
+        {showLeaveConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-neutral-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-5 sm:p-6 max-w-xs sm:max-w-sm w-full text-center shadow-2xl border border-neutral-200"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-600 border border-red-200 flex items-center justify-center text-2xl mx-auto mb-3">
+                🚪
+              </div>
+
+              <h3 className="text-lg font-black text-neutral-900 mb-1">
+                ¿Salir y Eliminar Sala?
+              </h3>
+              <p className="text-neutral-500 text-xs mb-5 leading-relaxed">
+                Al salir se <strong>eliminará el código</strong> y se cerrará la partida para que no queden salas vacías o en vano.
+              </p>
+
+              <div className="space-y-2">
+                <button
+                  id="btn-confirm-leave-room"
+                  type="button"
+                  onClick={() => {
+                    sounds.playClick();
+                    setShowLeaveConfirm(false);
+                    onLeaveRoom();
+                  }}
+                  className="w-full h-11 min-h-[44px] bg-red-600 active:bg-red-700 text-white font-black text-xs rounded-xl shadow flex items-center justify-center gap-1.5 touch-manipulation cursor-pointer active:scale-98"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sí, Salir y Eliminar Sala</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playClick();
+                    setShowLeaveConfirm(false);
+                  }}
+                  className="w-full h-10 min-h-[40px] bg-neutral-100 active:bg-neutral-200 text-neutral-700 font-bold text-xs rounded-xl touch-manipulation cursor-pointer"
+                >
+                  Continuar Jugando
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ROOM CLOSED MODAL */}
+      <AnimatePresence>
+        {room.status === 'roomClosed' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-neutral-900/80 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 max-w-xs sm:max-w-sm w-full text-center shadow-2xl border border-neutral-200"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 border-2 border-amber-300 flex items-center justify-center text-3xl mx-auto mb-3">
+                ⚠️
+              </div>
+
+              <h3 className="text-lg font-black text-neutral-900 mb-1">
+                Sala Cerrada y Eliminada
+              </h3>
+              <p className="text-neutral-500 text-xs mb-5 leading-relaxed">
+                El anfitrión o el rival ha cerrado la partida. El código de la sala ha sido eliminado.
+              </p>
+
+              <button
+                id="btn-return-lobby-closed"
+                type="button"
+                onClick={() => {
+                  sounds.playClick();
+                  onLeaveRoom();
+                }}
+                className="w-full h-12 min-h-[48px] bg-neutral-900 active:bg-neutral-800 text-white font-black text-xs rounded-xl shadow flex items-center justify-center gap-2 touch-manipulation cursor-pointer active:scale-98"
+              >
+                <span>Volver al Menú Principal</span>
+              </button>
             </motion.div>
           </motion.div>
         )}

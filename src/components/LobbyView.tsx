@@ -32,7 +32,9 @@ interface LobbyProps {
   initialCode?: string;
 }
 
-const AVATARS = ['🔥', '⚡', '👑', '🥊', '🦊', '🥋', '🎮', '🥑', '☀️', '🦁', '🚀', '🎯'];
+const AVATARS = [
+  '🔥', '⚡', '👑', '🥊', '🦊', '🥋', '🎮', '🥑', '🦁', '🚀', '🎯', '🐱', '🐼', '🐉', '🤖', '💀'
+];
 
 export const LobbyView: React.FC<LobbyProps> = ({
   onJoinRoom,
@@ -232,71 +234,75 @@ export const LobbyView: React.FC<LobbyProps> = ({
         </p>
       </motion.div>
 
-      {/* PLAYER PROFILE PILL */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-2.5 shadow-sm mb-3.5">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-            className="w-11 h-11 rounded-xl bg-neutral-100 border border-neutral-200 flex items-center justify-center text-2xl flex-shrink-0 active:scale-95 transition-transform touch-manipulation relative"
-            title="Cambiar avatar"
-          >
-            {avatar}
-            <span className="absolute -bottom-1 -right-1 text-[9px] bg-neutral-900 text-white rounded-full px-1 font-bold">
-              ✎
+      {/* PROMINENT PLAYER PROFILE CARD (MUY NOTORIO ANTES DE JUGAR) */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-3xl border-2 border-red-100 p-3.5 shadow-md mb-3.5 ring-4 ring-red-50/60"
+      >
+        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-neutral-100">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-black text-neutral-900 uppercase tracking-tight">
+              1. Tu Emoji y Nombre
             </span>
-          </button>
+            <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded-md font-extrabold">
+              Obligatorio
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-neutral-400">Toca un emoji 👇</span>
+        </div>
+
+        {/* EMOJI SELECTOR GRID (SIEMPRE VISIBLE Y NOTORIO) */}
+        <div className="grid grid-cols-8 gap-1.5 mb-3 bg-neutral-50 p-2 rounded-2xl border border-neutral-200/80">
+          {AVATARS.map((av) => {
+            const isSelected = avatar === av;
+            return (
+              <button
+                key={av}
+                type="button"
+                onClick={() => {
+                  setAvatar(av);
+                  saveProfile(name, av);
+                  sounds.playClick();
+                }}
+                className={`aspect-square rounded-xl text-xl sm:text-2xl flex items-center justify-center transition-all touch-manipulation cursor-pointer ${
+                  isSelected
+                    ? 'bg-red-500 text-white shadow-md ring-2 ring-red-300 scale-110 z-10'
+                    : 'bg-white hover:bg-neutral-100 active:scale-95 border border-neutral-200/60'
+                }`}
+                title={`Elegir ${av}`}
+              >
+                {av}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* NAME INPUT & LIVE PROFILE PREVIEW */}
+        <div className="flex items-center gap-2 bg-neutral-50 p-2 rounded-2xl border border-neutral-200">
+          <div className="w-12 h-12 rounded-xl bg-white border-2 border-red-200 flex items-center justify-center text-2xl flex-shrink-0 shadow-xs ring-2 ring-red-50">
+            {avatar}
+          </div>
 
           <div className="flex-1 min-w-0">
-            <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
-              Tu Nombre / Apodo
+            <label className="block text-[9px] font-black text-neutral-400 uppercase tracking-wider">
+              Tu Nombre / Apodo en el Duelo
             </label>
             <input
+              id="player-name-input"
               type="text"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 saveProfile(e.target.value, avatar);
               }}
-              placeholder="Escribe tu apodo..."
+              placeholder="Escribe tu apodo aquí..."
               maxLength={15}
-              className="w-full text-xs font-bold text-neutral-900 bg-transparent placeholder-neutral-400 focus:outline-none"
+              className="w-full text-sm font-black text-neutral-900 bg-transparent placeholder-neutral-400 focus:outline-none"
             />
           </div>
         </div>
-
-        {/* Expandable Avatar Picker */}
-        <AnimatePresence>
-          {showAvatarPicker && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden pt-2 mt-2 border-t border-neutral-100"
-            >
-              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
-                {AVATARS.map((av) => (
-                  <button
-                    key={av}
-                    type="button"
-                    onClick={() => {
-                      setAvatar(av);
-                      saveProfile(name, av);
-                      setShowAvatarPicker(false);
-                      sounds.playClick();
-                    }}
-                    className={`w-9 h-9 min-w-[36px] rounded-lg text-lg flex items-center justify-center active:scale-90 transition-transform ${
-                      avatar === av ? 'bg-red-500 text-white shadow-md ring-2 ring-red-300' : 'bg-neutral-100'
-                    }`}
-                  >
-                    {av}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      </motion.div>
 
       {/* MAIN BIG ACTION BUTTONS */}
       <div className="space-y-2.5">
@@ -367,91 +373,109 @@ export const LobbyView: React.FC<LobbyProps> = ({
         </button>
       </div>
 
-      {/* MODAL: UNIRSE CON CÓDIGO */}
+      {/* MODAL: UNIRSE CON CÓDIGO / INVITACIÓN DE SALA */}
       <AnimatePresence>
         {showJoinModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-neutral-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl border border-neutral-200"
+              className="bg-white rounded-3xl p-4 sm:p-5 max-w-sm w-full shadow-2xl border-2 border-neutral-200 max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex justify-between items-center mb-3">
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-neutral-100">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <h3 className="font-extrabold text-sm text-neutral-900">Unirse a Sala</h3>
+                  <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-base">
+                    ⚔️
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-neutral-900 leading-tight">
+                      {initialCode ? '¡Te invitaron a un Duelo!' : 'Unirse a una Sala'}
+                    </h3>
+                    <p className="text-[10px] text-neutral-500 font-medium">
+                      Elige tu Emoji y Nombre para empezar
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowJoinModal(false)}
-                  className="w-7 h-7 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 text-xs font-bold"
+                  className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-neutral-500 text-sm font-bold touch-manipulation cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <form onSubmit={handleJoinByCode} className="space-y-3">
-                {/* Invited player name and avatar */}
-                <div className="bg-neutral-50 p-2.5 rounded-2xl border border-neutral-200">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                      className="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-xl flex-shrink-0 shadow-xs"
-                      title="Cambiar avatar"
-                    >
-                      {avatar}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
-                        Tu Nombre / Apodo
-                      </label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => {
-                          setName(e.target.value);
-                          saveProfile(e.target.value, avatar);
-                        }}
-                        placeholder="Escribe tu apodo..."
-                        maxLength={15}
-                        required
-                        className="w-full text-xs font-bold text-neutral-900 bg-transparent placeholder-neutral-400 focus:outline-none"
-                      />
-                    </div>
+              <form onSubmit={handleJoinByCode} className="space-y-3.5">
+                {/* 1. SELECCIÓN DE EMOJI SUPER NOTORIA */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-black text-neutral-900 uppercase tracking-tight flex items-center gap-1">
+                      <span>1. Elige tu Emoji</span>
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-neutral-400">Toca uno 👇</span>
                   </div>
 
-                  {showAvatarPicker && (
-                    <div className="flex gap-1.5 overflow-x-auto pt-2 mt-2 border-t border-neutral-200/60 pb-1 scrollbar-none">
-                      {AVATARS.map((av) => (
+                  <div className="grid grid-cols-8 gap-1.5 bg-neutral-50 p-2 rounded-2xl border border-neutral-200">
+                    {AVATARS.map((av) => {
+                      const isSelected = avatar === av;
+                      return (
                         <button
                           key={av}
                           type="button"
                           onClick={() => {
                             setAvatar(av);
                             saveProfile(name, av);
-                            setShowAvatarPicker(false);
                             sounds.playClick();
                           }}
-                          className={`w-7 h-7 min-w-[28px] rounded-lg text-sm flex items-center justify-center ${
-                            avatar === av ? 'bg-red-500 text-white shadow-xs' : 'bg-white'
+                          className={`aspect-square rounded-xl text-lg sm:text-xl flex items-center justify-center transition-all touch-manipulation cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-300 scale-110 z-10'
+                              : 'bg-white hover:bg-neutral-100 active:scale-95 border border-neutral-200/60'
                           }`}
                         >
                           {av}
                         </button>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
 
+                {/* 2. TU NOMBRE / APODO */}
                 <div>
-                  <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
+                  <label className="block text-[11px] font-black text-neutral-900 uppercase tracking-tight mb-1 flex items-center gap-1">
+                    <span>2. Tu Nombre o Apodo</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-2 bg-neutral-50 p-2 rounded-2xl border border-neutral-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-2xl flex-shrink-0 shadow-xs">
+                      {avatar}
+                    </div>
+                    <input
+                      id="join-player-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        saveProfile(e.target.value, avatar);
+                      }}
+                      placeholder="Tu nombre aquí (Ej: Alex, Dragón...)"
+                      maxLength={15}
+                      required
+                      className="w-full text-xs sm:text-sm font-black text-neutral-900 bg-transparent placeholder-neutral-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. CÓDIGO DE SALA */}
+                <div>
+                  <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
                     Código de Sala
                   </label>
                   <input
@@ -466,22 +490,27 @@ export const LobbyView: React.FC<LobbyProps> = ({
                     maxLength={6}
                     autoCapitalize="characters"
                     autoCorrect="off"
+                    required
                     className="w-full h-12 px-3 bg-neutral-50 border border-neutral-300 rounded-xl text-center text-xl font-mono tracking-widest font-black text-neutral-900 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
 
                 {errorMsg && (
-                  <div className="p-2 rounded-lg bg-red-50 text-red-700 text-[11px] flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0" />
+                  <div className="p-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[11px] font-bold flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 flex-shrink-0" />
                     <span>{errorMsg}</span>
                   </div>
                 )}
 
+                {/* BOTÓN GIGANTE ENTRAR */}
                 <button
+                  id="btn-confirm-join-room"
                   type="submit"
-                  className="w-full h-11 min-h-[44px] bg-blue-600 active:bg-blue-700 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-2 touch-manipulation cursor-pointer"
+                  className="w-full h-13 min-h-[52px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-sm rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 touch-manipulation cursor-pointer transition-transform active:scale-98"
                 >
-                  <span>Entrar al Duelo</span>
+                  <span className="text-lg">{avatar}</span>
+                  <span>¡Entrar al Duelo y Jugar!</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
                 </button>
               </form>
             </motion.div>

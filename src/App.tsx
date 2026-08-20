@@ -286,6 +286,7 @@ export default function App() {
   const handleLeaveRoom = () => {
     gameEngine.leaveRoom();
     setRoom(null);
+    setInitialRoomCode(undefined);
     setIsBotMode(false);
     setReactions([]);
     window.history.replaceState({}, '', window.location.pathname);

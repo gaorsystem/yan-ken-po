@@ -151,6 +151,30 @@ class SupabaseGameEngine {
       }
     });
 
+    // 4. Room Closed / Opponent Left
+    channel.on('broadcast', { event: 'room_closed' }, ({ payload }) => {
+      if (payload?.isHost) {
+        // Host left/closed the room -> notify guest that room is closed and deleted
+        if (this.currentRoom) {
+          const closedRoom: RoomState = {
+            ...this.currentRoom,
+            status: 'roomClosed',
+          };
+          this.currentRoom = closedRoom;
+          if (this.updateCallback) this.updateCallback(closedRoom);
+        }
+      } else if (this.isHost && this.currentRoom) {
+        // Guest left -> reset guest slot to null and wait for new player
+        this.currentRoom = {
+          ...this.currentRoom,
+          p2: null,
+          status: 'waiting',
+        };
+        this.hostP2Choice = null;
+        this.broadcastState();
+      }
+    });
+
     // 4. Presence
     channel.on('presence', { event: 'join' }, ({ newPresences }) => {
       if (this.isHost && this.currentRoom) {
@@ -493,6 +517,19 @@ class SupabaseGameEngine {
 
   leaveRoom() {
     if (this.channel) {
+      try {
+        this.channel.send({
+          type: 'broadcast',
+          event: 'room_closed',
+          payload: {
+            code: this.currentRoom?.code,
+            isHost: this.isHost,
+            playerId: this.myPlayerId,
+          },
+        });
+      } catch (e) {
+        // ignore errors on close
+      }
       this.channel.unsubscribe();
       supabase.removeChannel(this.channel);
       this.channel = null;

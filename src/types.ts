@@ -34,7 +34,7 @@ export interface RoomState {
   code: string;
   title?: string;
   isPublic?: boolean;
-  status: 'waiting' | 'countdown' | 'revealing' | 'roundResult' | 'matchOver';
+  status: 'waiting' | 'countdown' | 'revealing' | 'roundResult' | 'matchOver' | 'roomClosed';
   p1: Player | null;
   p2: Player | null;
   round: number;
