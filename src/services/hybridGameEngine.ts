@@ -435,10 +435,11 @@ class SupabaseGameEngine {
 
       this.currentRoom = {
         ...this.currentRoom,
+        round: this.currentRoom.round + 1,
         status: finalStatus,
         winner: matchWinner,
-        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, score: p1Score, choice: p1Choice, hasChosen: true } : null,
-        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, score: p2Score, choice: p2Choice, hasChosen: true } : null,
+        p1: this.currentRoom.p1 ? { ...this.currentRoom.p1, score: p1Score, choice: null, hasChosen: false, readyForNext: false } : null,
+        p2: this.currentRoom.p2 ? { ...this.currentRoom.p2, score: p2Score, choice: null, hasChosen: false, readyForNext: false } : null,
         history: [...this.currentRoom.history, roundResult],
         lastActionTime: Date.now(),
       };

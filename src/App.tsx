@@ -207,8 +207,8 @@ export default function App() {
           round: currentRound,
           status: finalStatus,
           winner: matchWinner,
-          p1: room.p1 ? { ...room.p1, choice, hasChosen: true, score: newP1Score } : null,
-          p2: room.p2 ? { ...room.p2, choice: botChoice, hasChosen: true, score: newP2Score } : null,
+          p1: room.p1 ? { ...room.p1, choice: null, hasChosen: false, score: newP1Score } : null,
+          p2: room.p2 ? { ...room.p2, choice: null, hasChosen: false, score: newP2Score } : null,
           history: newHistory,
         });
       }, 1800);

@@ -210,12 +210,13 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
   };
 
   const lastRound = room.history.length > 0 ? room.history[room.history.length - 1] : null;
+  const myLastChoice = lastRound ? (myRole === 'p1' ? lastRound.p1Choice : lastRound.p2Choice) : null;
+  const rivalLastChoice = lastRound ? (myRole === 'p1' ? lastRound.p2Choice : lastRound.p1Choice) : null;
   const isRoundResolved =
     (room.status === 'roundResult' || room.status === 'matchOver') &&
-    room.history.length > 0 &&
+    Boolean(lastRound) &&
     !me?.hasChosen &&
-    !rival?.hasChosen &&
-    Boolean(lastRound);
+    !rival?.hasChosen;
 
   return (
     <div className="w-full max-w-lg mx-auto relative pb-6 px-1">
@@ -646,9 +647,9 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
               ) : (
                 <div className="text-[11px] font-bold text-neutral-600">
                   {me?.choice && !rival?.hasChosen && !rival?.choice
-                    ? `🔒 Marcaste ${CHOICE_LABELS[me.choice]} — Esperando al rival...`
+                    ? `✊ Marcaste ${CHOICE_LABELS[me.choice]} — Esperando al rival...`
                     : !me?.choice && (rival?.hasChosen || rival?.choice)
-                    ? '⚡ ¡Tu rival ya eligió! Marca tu jugada...'
+                    ? '⚡ ¡Tu rival ya está listo! Marca tu jugada...'
                     : me?.choice && (rival?.hasChosen || rival?.choice)
                     ? '✨ ¡Ambos listos! Revelando...'
                     : '⚡ ¡Elige Piedra, Papel o Tijera abajo!'}
@@ -674,25 +675,25 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                       ? 'bg-emerald-50 border-emerald-300 ring-4 ring-emerald-100'
                       : isRoundResolved && lastRound?.winner === rivalRole
                       ? 'bg-neutral-100 border-neutral-200 opacity-60'
-                      : me?.choice
+                      : me?.choice && me?.hasChosen
                       ? 'bg-red-50 border-red-300 ring-2 ring-red-100'
                       : 'bg-neutral-50 border-neutral-200'
                   }`}
                 >
                   {room.status === 'revealing'
                     ? '✊'
-                    : isRoundResolved && me?.choice
-                    ? CHOICE_EMOJIS[me.choice]
-                    : me?.choice
+                    : isRoundResolved && myLastChoice
+                    ? CHOICE_EMOJIS[myLastChoice]
+                    : me?.choice && me?.hasChosen
                     ? CHOICE_EMOJIS[me.choice]
                     : '❓'}
                 </motion.div>
                 <div className="mt-1.5 text-[11px] font-bold text-neutral-800">
                   {room.status === 'revealing'
                     ? '¡Listo!'
-                    : isRoundResolved && me?.choice
-                    ? CHOICE_LABELS[me.choice]
-                    : me?.choice
+                    : isRoundResolved && myLastChoice
+                    ? CHOICE_LABELS[myLastChoice]
+                    : me?.choice && me?.hasChosen
                     ? `✓ ${CHOICE_LABELS[me.choice]}`
                     : 'Tu jugada'}
                 </div>
@@ -724,19 +725,19 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
                 >
                   {room.status === 'revealing'
                     ? '✊'
-                    : isRoundResolved && rival?.choice
-                    ? CHOICE_EMOJIS[rival.choice]
+                    : isRoundResolved && rivalLastChoice
+                    ? CHOICE_EMOJIS[rivalLastChoice]
                     : (rival?.choice || rival?.hasChosen)
-                    ? '🔒'
+                    ? '✊'
                     : '❓'}
                 </motion.div>
                 <div className="mt-1.5 text-[11px] font-bold text-neutral-800">
                   {room.status === 'revealing'
                     ? '¡Listo!'
-                    : isRoundResolved && rival?.choice
-                    ? CHOICE_LABELS[rival.choice]
+                    : isRoundResolved && rivalLastChoice
+                    ? CHOICE_LABELS[rivalLastChoice]
                     : (rival?.choice || rival?.hasChosen)
-                    ? '¡Eligió!'
+                    ? '¡Mano Lista!'
                     : 'Esperando...'}
                 </div>
               </div>
@@ -766,7 +767,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
             <div className="text-center text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-2.5">
               {room.status === 'matchOver'
                 ? 'Partida Terminada'
-                : me?.choice && !isRoundResolved
+                : me?.hasChosen && me?.choice && !isRoundResolved
                 ? `Jugada marcada: ${CHOICE_LABELS[me.choice]} (esperando rival)`
                 : (rival?.choice || rival?.hasChosen) && !isRoundResolved
                 ? '¡Tu rival ya marcó! Elige tu jugada:'
@@ -775,7 +776,7 @@ export const GameRoomView: React.FC<GameRoomProps> = ({
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {(['piedra', 'papel', 'tijera'] as Choice[]).map((choiceKey) => {
-                const isSelected = me?.choice === choiceKey;
+                const isSelected = Boolean(!isRoundResolved && me?.hasChosen && me?.choice === choiceKey);
                 const isDisabled = room.status === 'revealing' || room.status === 'matchOver';
 
                 return (
