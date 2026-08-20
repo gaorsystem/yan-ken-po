@@ -59,13 +59,11 @@ export const LobbyView: React.FC<LobbyProps> = ({
     const savedAvatar = localStorage.getItem('yankenpo_avatar');
     if (savedName) setName(savedName);
     if (savedAvatar) setAvatar(savedAvatar);
-
-    const handleFsChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-    document.addEventListener('fullscreenchange', handleFsChange);
-    return () => document.removeEventListener('fullscreenchange', handleFsChange);
-  }, []);
+    if (initialCode) {
+      setJoinCode(initialCode);
+      setShowJoinModal(true);
+    }
+  }, [initialCode]);
 
   const saveProfile = (n: string, a: string) => {
     localStorage.setItem('yankenpo_name', n);
@@ -400,6 +398,59 @@ export const LobbyView: React.FC<LobbyProps> = ({
               </div>
 
               <form onSubmit={handleJoinByCode} className="space-y-3">
+                {/* Invited player name and avatar */}
+                <div className="bg-neutral-50 p-2.5 rounded-2xl border border-neutral-200">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                      className="w-10 h-10 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-xl flex-shrink-0 shadow-xs"
+                      title="Cambiar avatar"
+                    >
+                      {avatar}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider">
+                        Tu Nombre / Apodo
+                      </label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          saveProfile(e.target.value, avatar);
+                        }}
+                        placeholder="Escribe tu apodo..."
+                        maxLength={15}
+                        required
+                        className="w-full text-xs font-bold text-neutral-900 bg-transparent placeholder-neutral-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {showAvatarPicker && (
+                    <div className="flex gap-1.5 overflow-x-auto pt-2 mt-2 border-t border-neutral-200/60 pb-1 scrollbar-none">
+                      {AVATARS.map((av) => (
+                        <button
+                          key={av}
+                          type="button"
+                          onClick={() => {
+                            setAvatar(av);
+                            saveProfile(name, av);
+                            setShowAvatarPicker(false);
+                            sounds.playClick();
+                          }}
+                          className={`w-7 h-7 min-w-[28px] rounded-lg text-sm flex items-center justify-center ${
+                            avatar === av ? 'bg-red-500 text-white shadow-xs' : 'bg-white'
+                          }`}
+                        >
+                          {av}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">
                     Código de Sala
